@@ -1,9 +1,47 @@
 #include <iostream>
 #include <fstream>
 #include <bits/stdc++.h>
+#include<map>
+#include<vector>
+#include<string>
+#include <limits> // For numeric_limits
 using namespace std;
 map<string, int> primaryIndex;
 map<string, int> primaryIndexOnAppoint;
+vector<int> doctorAvailList;
+vector<int> appointmentAvailList;
+struct Record{  //to implement read and write and delete record
+string s1;
+string s2;
+string s3;
+};
+Record readRecord(fstream &file, int offset) {
+    file.seekg(offset, ios::beg);//move read pointer to the begin of the record you want to read
+    int recordSize;// Read record size and skip it
+    file >> recordSize;
+    file.ignore(); // Skip the delimiter
+    // Read the fields
+    string s1, s2, s3;
+    getline(file, s1, '|');
+    getline(file, s2, '|');
+    getline(file, s3, '|');
+
+      return {s1, s2, s3}; // Return as a Record struct
+}
+void deleteRecord(fstream &file, int offset, vector<int> &availList) {
+    // Read the record to find its length
+    file.seekg(offset, ios::beg);
+    int recordSize;
+    file >> recordSize;
+    file.ignore(); // Skip the delimiter
+
+    // Move to the end of the record and append * overwrite the last char with *
+    file.seekp(offset + recordSize , ios::beg);
+    file.put('*'); // Mark the record as deleted
+    availList.push_back(offset);
+
+}
+
 struct useprimaryIndex {
     void addPrimaryIndex(map<string, int> &primaryIndexm, const string &key, int offset) {
         primaryIndexm[key] = offset;
@@ -77,34 +115,52 @@ struct Doctor {
         // Save indexes
         p.savePrimaryIndexToFile(primaryIndex, "PrimaryIndexOnDocID.txt");
     }
+    void deleteDoctor(const string &doctorID) {
+    if (primaryIndex.find(doctorID) == primaryIndex.end()) {
+        cout << "Doctor ID you want to delete does not exist. Deletion failed.\n";
+        return;
+    }
+
+    fstream file("Doctor.txt", ios::in | ios::out);
+    if (!file) {
+        cerr << "Error opening file for deleting doctor.\n";
+        return;
+    }
+
+    int offset = primaryIndex[doctorID];
+    deleteRecord(file, offset, doctorAvailList);
+    primaryIndex.erase(doctorID);// Remove from primary index
+    cout << "Doctor record deleted successfully.\n";
+    useprimaryIndex p;
+    p.savePrimaryIndexToFile(primaryIndex, "PrimaryIndexOnDocID.txt");
+}
 };
 struct Appointment {
     char appointmentID[15];
     char appointmentDate[30];
     char doctorID[15];
 };
+// void printAvailList(const vector<int>& availList) {
+//     if (availList.empty()) {
+//         cout << "Empty\n";
+//         return;
+//     }
+//     for (int offset : availList) {
+//         cout << offset << " ";
+//     }
+//     cout << endl;
+// }
+ 
 
+    
 
-struct AvailListDOC {
-    vector<int> offsets; // Track available space in the file.
-    int getAvailableOffset(vector<int>& availList) {
-        if (availList.empty()) return -1;
-        int offset = availList.back();
-        availList.pop_back();
-        return offset;
-    }
-
-    void addToAvailList(vector<int>& availList, int offset) {
-        availList.push_back(offset);
-    }
-};
 
 int main() {
     useprimaryIndex p;
     p.loadPrimaryIndexFromFile(primaryIndex, "PrimaryIndexOnDocID.txt");
    // p.loadPrimaryIndexFromFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
     while (true) {
-        cout << "\nWelcome! Enter your choice:\n";
+        cout << "\nWelcome! to Healthcare management system\n";
         cout << "1. Add New Doctor\n";
         cout << "2. Add New Appointment\n";
         cout << "3. Update Doctor Name (Doctor ID)\n";
@@ -115,6 +171,7 @@ int main() {
         cout << "8. Print Appointment Info (Appointment ID)\n";
         cout << "9. Write Query\n";
         cout << "0. Exit\n";
+         cout << "Enter your choice:\n";
         int choice;
         cin >> choice;
         if (choice == 0) {
@@ -133,6 +190,15 @@ int main() {
             cin.getline(doc.address, size(doc.address));
             doc.addDoctor(doc.doctorID, doc.doctorName, doc.address, primaryIndex);
         }
+        if (choice == 6) { 
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            string doctorID;
+            cout << "Enter Doctor ID to delete: ";
+            cin >> doctorID;
+            Doctor doc;
+            doc.deleteDoctor(doctorID);
+        }
+        //printAvailList(doctorAvailList ); to debug the current content of availList
     }
 
 
