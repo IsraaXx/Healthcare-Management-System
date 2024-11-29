@@ -11,22 +11,22 @@ map<string, int> primaryIndexOnAppoint;
 vector<int> doctorAvailList;
 vector<int> appointmentAvailList;
 struct Record{  //to implement read and write and delete record
-string s1;
-string s2;
-string s3;
+    string s1;
+    string s2;
+    string s3;
 };
 Record readRecord(fstream &file, int offset) {
     file.seekg(offset, ios::beg);//move read pointer to the begin of the record you want to read
     int recordSize;// Read record size and skip it
     file >> recordSize;
-    file.ignore(); // Skip the delimiter
+    //file.ignore(); // Skip the delimiter
     // Read the fields
     string s1, s2, s3;
     getline(file, s1, '|');
     getline(file, s2, '|');
     getline(file, s3, '|');
 
-      return {s1, s2, s3}; // Return as a Record struct
+    return {s1, s2, s3}; // Return as a Record struct
 }
 void deleteRecord(fstream &file, int offset, vector<int> &availList) {
     // Read the record to find its length
@@ -43,36 +43,32 @@ void deleteRecord(fstream &file, int offset, vector<int> &availList) {
 }
 
 struct useprimaryIndex {
-    void addPrimaryIndex(map<string, int> &primaryIndexm, const string &key, int offset) {
-        primaryIndexm[key] = offset;
+    void addPrimaryIndex(const string &key, int offset) {
+        primaryIndex[key] = offset;
     }
-
-    void removePrimaryIndex(map<string, int> &primaryIndexm, const string &key) {
-        primaryIndexm.erase(key);
+    void removePrimaryIndex( const string &key) {
+        primaryIndex.erase(key);
     }
-
-    int binarySearchPrimaryIndex(const map<string, int> &primaryIndexm, const string &key) {
-        auto it = primaryIndexm.find(key); // Binary search happens internally in the map
-        if (it != primaryIndexm.end()) {
+    int binarySearchPrimaryIndex(const string &key) {
+        auto it = primaryIndex.find(key); // Binary search happens internally in the map
+        if (it != primaryIndex.end()) {
             return it->second; // Return offset if key is found
         }
         return -1; // Return -1 if not found
     }
-
-    void savePrimaryIndexToFile(const map<string, int> &primaryIndexm, const string &filename) {
+    void savePrimaryIndexToFile( const string &filename) {
         ofstream outfile(filename, ios::out);
         if (!outfile) {
             cerr << "Error opening file for saving primary index!" << endl;
             return;
         }
-        for (const auto &entry: primaryIndexm) {
+        for (const auto &entry: primaryIndex) {
             outfile << entry.first << " " << entry.second << "\n";
         }
         outfile.close();
         cout << "Primary index saved to " << filename << endl;
     }
-
-    void loadPrimaryIndexFromFile(map<string, int> &primaryIndex, const string &filename) {
+    void loadPrimaryIndexFromFile( const string &filename) {
         ifstream infile(filename, ios::in);
         if (!infile) {
             cerr << "Error opening file for loading primary index: " << filename << endl;
@@ -92,7 +88,7 @@ struct Doctor {
     char doctorID[15];
     char doctorName[30];
     char address[30];
-    void addDoctor(const string& doctorID, const string& name, const string& address,map<string, int>& primaryIndex) {
+    void addDoctor(const string& doctorID, const string& name, const string& address) {
         if (primaryIndex.find(doctorID) != primaryIndex.end()) {
             cout << "Doctor ID already exists! Enter another ID" << endl;
             return;
@@ -111,52 +107,50 @@ struct Doctor {
         int sizeofname = named.size(); int sizeofid = id.size(); int sizeofadd = add.size(); int sizeOfRecord = sizeofname + sizeofid + sizeofadd;
         outfile << sizeOfRecord; outfile << id; outfile << named; outfile << add ;
         useprimaryIndex p;
-        p.addPrimaryIndex(primaryIndex,doctorID,offset);
+        p.addPrimaryIndex(doctorID,offset);
         // Save indexes
-        p.savePrimaryIndexToFile(primaryIndex, "PrimaryIndexOnDocID.txt");
+        p.savePrimaryIndexToFile("PrimaryIndexOnDocID.txt");
     }
     void deleteDoctor(const string &doctorID) {
-    if (primaryIndex.find(doctorID) == primaryIndex.end()) {
-        cout << "Doctor ID you want to delete does not exist. Deletion failed.\n";
-        return;
+        if (primaryIndex.find(doctorID) == primaryIndex.end()) {
+            cout << "Doctor ID you want to delete does not exist. Deletion failed.\n";
+            return;
+        }
+        fstream file("Doctor.txt", ios::in | ios::out);
+        if (!file) {
+            cerr << "Error opening file for deleting doctor.\n";
+            return;
+        }
+        useprimaryIndex p ;
+        int offset = p.binarySearchPrimaryIndex(doctorID);
+        deleteRecord(file, offset, doctorAvailList);
+        p.removePrimaryIndex(doctorID);// Remove from primary index
+        cout << "Doctor record deleted successfully.\n";
+        p.savePrimaryIndexToFile("PrimaryIndexOnDocID.txt");
     }
+    void printDoctorInfo(const string& doctorID) {
+        // Check if the Doctor ID exists in the primary index
+        if (primaryIndex.find(doctorID) == primaryIndex.end()) {
+            cout << "Doctor ID not found.\n";
+            return;
+        }
+        useprimaryIndex p ;
+        int offset = p.binarySearchPrimaryIndex(doctorID);
 
-    fstream file("Doctor.txt", ios::in | ios::out);
-    if (!file) {
-        cerr << "Error opening file for deleting doctor.\n";
-        return;
+        // Open the file to read the doctor information
+        fstream file("Doctor.txt", ios::in);
+        if (!file) {
+            cerr << "Error opening file to read doctor information.\n";
+            return;
+        }
+        // Read the record using readRecord function
+        Record record = readRecord(file, offset);
+        file.close();
+        cout << "Doctor Information:\n";
+        cout << "Doctor ID: " << record.s1 << "\n";
+        cout << "Doctor Name: " << record.s2 << "\n";
+        cout << "Address: " << record.s3 << "\n";
     }
-
-    int offset = primaryIndex[doctorID];
-    deleteRecord(file, offset, doctorAvailList);
-    primaryIndex.erase(doctorID);// Remove from primary index
-    cout << "Doctor record deleted successfully.\n";
-    useprimaryIndex p;
-    p.savePrimaryIndexToFile(primaryIndex, "PrimaryIndexOnDocID.txt");
-}
-void printDoctorInfo(const string& doctorID) {
-    // Check if the Doctor ID exists in the primary index
-    if (primaryIndex.find(doctorID) == primaryIndex.end()) {
-        cout << "Doctor ID not found.\n";
-        return;
-    }
-    int offset = primaryIndex[doctorID];
-
-    // Open the file to read the doctor information
-    fstream file("Doctor.txt", ios::in);
-    if (!file) {
-        cerr << "Error opening file to read doctor information.\n";
-        return;
-    }
-
-    // Read the record using readRecord function
-    Record record = readRecord(file, offset);
-    file.close();
-    cout << "Doctor Information:\n";
-    cout << "Doctor ID: " << record.s1 << "\n";
-    cout << "Doctor Name: " << record.s2 << "\n";
-    cout << "Address: " << record.s3 << "\n";
-}
 };
 struct Appointment {
     char appointmentID[15];
@@ -173,15 +167,13 @@ struct Appointment {
 //     }
 //     cout << endl;
 // }
- 
 
-    
 
 
 int main() {
     useprimaryIndex p;
-    p.loadPrimaryIndexFromFile(primaryIndex, "PrimaryIndexOnDocID.txt");
-   // p.loadPrimaryIndexFromFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
+    p.loadPrimaryIndexFromFile("PrimaryIndexOnDocID.txt");
+    // p.loadPrimaryIndexFromFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
     while (true) {
         cout << "\nWelcome! to Healthcare management system\n";
         cout << "1. Add New Doctor\n";
@@ -194,7 +186,7 @@ int main() {
         cout << "8. Print Appointment Info (Appointment ID)\n";
         cout << "9. Write Query\n";
         cout << "0. Exit\n";
-         cout << "Enter your choice:\n";
+        cout << "Enter your choice:\n";
         int choice;
         cin >> choice;
         if (choice == 0) {
@@ -211,9 +203,9 @@ int main() {
             cout << "Address:";
             cin.ignore();  // Clear the newline character left in the buffer
             cin.getline(doc.address, size(doc.address));
-            doc.addDoctor(doc.doctorID, doc.doctorName, doc.address, primaryIndex);
+            doc.addDoctor(doc.doctorID, doc.doctorName, doc.address);
         }
-        if (choice == 6) { 
+        if (choice == 6) {
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             string doctorID;
             cout << "Enter Doctor ID to delete: ";
@@ -222,7 +214,7 @@ int main() {
             doc.deleteDoctor(doctorID);
         }
         //printAvailList(doctorAvailList ); to debug the current content of availList
-        if (choice == 7) { 
+        if (choice == 7) {
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             string doctorID;
             cout << "Enter Doctor ID to print information: ";
@@ -231,8 +223,7 @@ int main() {
             doc.printDoctorInfo(doctorID);
         }
     }
-
-
+    
 }
 
 
