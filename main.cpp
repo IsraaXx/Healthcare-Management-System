@@ -134,6 +134,29 @@ struct Doctor {
     useprimaryIndex p;
     p.savePrimaryIndexToFile(primaryIndex, "PrimaryIndexOnDocID.txt");
 }
+void printDoctorInfo(const string& doctorID) {
+    // Check if the Doctor ID exists in the primary index
+    if (primaryIndex.find(doctorID) == primaryIndex.end()) {
+        cout << "Doctor ID not found.\n";
+        return;
+    }
+    int offset = primaryIndex[doctorID];
+
+    // Open the file to read the doctor information
+    fstream file("Doctor.txt", ios::in);
+    if (!file) {
+        cerr << "Error opening file to read doctor information.\n";
+        return;
+    }
+
+    // Read the record using readRecord function
+    Record record = readRecord(file, offset);
+    file.close();
+    cout << "Doctor Information:\n";
+    cout << "Doctor ID: " << record.s1 << "\n";
+    cout << "Doctor Name: " << record.s2 << "\n";
+    cout << "Address: " << record.s3 << "\n";
+}
 };
 struct Appointment {
     char appointmentID[15];
@@ -199,6 +222,14 @@ int main() {
             doc.deleteDoctor(doctorID);
         }
         //printAvailList(doctorAvailList ); to debug the current content of availList
+        if (choice == 7) { 
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            string doctorID;
+            cout << "Enter Doctor ID to print information: ";
+            cin >> doctorID;
+            Doctor doc;
+            doc.printDoctorInfo(doctorID);
+        }
     }
 
 
