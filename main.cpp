@@ -162,6 +162,43 @@ struct Appointment {
     char appointmentID[15];
     char appointmentDate[30];
     char doctorID[15];
+    void deleteAppoint(const string &AppID) {
+        if (primaryIndexOnAppoint.find(AppID) == primaryIndexOnAppoint.end()) {
+            cout << "Appointment ID you want to delete does not exist. Deletion failed.\n";
+            return; }
+        fstream file("Appointment.txt", ios::in | ios::out);
+        if (!file) {
+            cerr << "Error opening file for deleting doctor.\n";
+            return;
+        }
+        useprimaryIndex p ;
+        int offset = p.binarySearchPrimaryIndex(primaryIndexOnAppoint,AppID);
+        deleteRecord(file, offset, appointmentAvailList);
+        p.removePrimaryIndex(primaryIndexOnAppoint,AppID);// Remove from primary index
+        cout << "Appointment record deleted successfully.\n";
+
+        p.savePrimaryIndexToFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
+    }
+    void printAppointmentInfo(const string& AppID) {
+        if (primaryIndexOnAppoint.find(AppID) == primaryIndexOnAppoint.end()) {
+            cout << "Appointment ID not found.\n";
+            return;
+        }
+        useprimaryIndex p ;
+        int offset = p.binarySearchPrimaryIndex(primaryIndexOnAppoint,AppID);
+        fstream file("Appointment.txt", ios::in);
+        if (!file) {
+            cerr << "Error opening file to read Appointment information.\n";
+            return;
+        }
+        // Read the record using readRecord function
+        Record record = readRecord(file, offset);
+        file.close();
+        cout << "Appointment Information:\n";
+        cout << "Appointment ID: " << record.s1 << "\n";
+        cout << "Appointment Date: " << record.s2 << "\n";
+        cout << "Doctor ID: " << record.s3 << "\n";
+    }
 };
 // void printAvailList(const vector<int>& availList) {
 //     if (availList.empty()) {
@@ -174,14 +211,10 @@ struct Appointment {
 //     cout << endl;
 // }
 
-
-
-
-
 int main() {
     useprimaryIndex p;
     p.loadPrimaryIndexFromFile(primaryIndex, "PrimaryIndexOnDocID.txt");
-    // p.loadPrimaryIndexFromFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
+    p.loadPrimaryIndexFromFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
     while (true) {
         cout << "\nWelcome! to Healthcare management system\n";
         cout << "1. Add New Doctor\n";
@@ -213,6 +246,14 @@ int main() {
             cin.getline(doc.address, size(doc.address));
             doc.addDoctor(doc.doctorID, doc.doctorName, doc.address, primaryIndex);
         }
+        if (choice == 5) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            string AppID;
+            cout << "Enter Appointment ID to delete: ";
+            cin >> AppID;
+            Appointment app;
+            app.deleteAppoint(AppID);
+        }
         if (choice == 6) {
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             string doctorID;
@@ -230,9 +271,16 @@ int main() {
             Doctor doc;
             doc.printDoctorInfo(doctorID);
         }
+
+        if (choice == 8) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n');
+            string AppID;
+            cout << "Enter Appointment ID to print information: ";
+            cin >> AppID;
+            Appointment app;
+            app.printAppointmentInfo(AppID);
+        }
     }
-
-
 }
 
 
