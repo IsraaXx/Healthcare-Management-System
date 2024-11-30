@@ -4,22 +4,22 @@
 #include<map>
 #include<vector>
 #include<string>
+#include<algorithm>
 #include <limits> // For numeric_limits
 using namespace std;
 map<string, int> primaryIndex;
 map<string, int> primaryIndexOnAppoint;
-vector<int> doctorAvailList;
-vector<int> appointmentAvailList;
+vector<pair<int,int>> doctorAvailList;
+vector<pair<int,int>> appointmentAvailList;
 struct Record{  //to implement read and write and delete record
     string s1;
     string s2;
     string s3;
-};
+
 Record readRecord(fstream &file, int offset) {
     file.seekg(offset, ios::beg);//move read pointer to the begin of the record you want to read
     int recordSize;// Read record size and skip it
     file >> recordSize;
-   // file.ignore(); // Skip the delimiter
     // Read the fields
     string s1, s2, s3;
     getline(file, s1, '|');
@@ -28,20 +28,49 @@ Record readRecord(fstream &file, int offset) {
 
     return {s1, s2, s3}; // Return as a Record struct
 }
-void deleteRecord(fstream &file, int offset, vector<int> &availList) {
+void deleteRecord(fstream &file, int offset, vector<pair<int,int>> &availList) {
     // Read the record to find its length
     file.seekg(offset, ios::beg);
     int recordSize;
     file >> recordSize;
-    file.ignore(); // Skip the delimiter
-
     // Move to the end of the record and append * overwrite the last char with *
     file.seekp(offset + recordSize , ios::beg);
-    file.put('*'); // Mark the record as deleted
-    availList.push_back(offset);
+    file.put('*'); 
+    // Add the record size and offset to the avail list
+    availList.emplace_back(recordSize, offset);
+    // Sort the avail list by record size (ascending) to implement bestfit strategy
+    sort(availList.begin(), availList.end());
 
 }
+void saveAvailListToFile(const vector<pair<int, int>> &availList, const string &filename) {
+    ofstream outfile(filename, ios::out);
+    if (!outfile) {
+        cerr << "Error opening file to save avail list.\n";
+        return;
+    }
+    for (const auto &entry : availList) {
+        outfile << entry.first << " " << entry.second << "\n";
+    }
+    outfile.close();
+    cout << "Avail list saved to " << filename << "\n";
+}
+void loadAvailListFromFile(vector<pair<int, int>> &availList, const string &filename) {
+    ifstream infile(filename, ios::in);
+    if (!infile) {
+        cerr << "Error opening file to load avail list.\n";
+        return;
+    }
+    availList.clear();// Clear the existing list to avoid appending to old data
+    int recordSize, offset;
+    while (infile >> recordSize >> offset) {
+        availList.emplace_back(recordSize, offset);
+    }
+    infile.close();
+    sort(availList.begin(), availList.end());
+    cout << "Avail list loaded from " << filename << "\n";
+}
 
+};
 struct useprimaryIndex {
     void addPrimaryIndex(map<string, int> &primaryIndexm, const string &key, int offset) {
         primaryIndexm[key] = offset;
@@ -129,28 +158,27 @@ struct Doctor {
 
         useprimaryIndex p ;
         int offset = p.binarySearchPrimaryIndex(primaryIndex,doctorID);
-        deleteRecord(file, offset, doctorAvailList);
+        Record r1;
+        r1.deleteRecord(file, offset, doctorAvailList);
         p.removePrimaryIndex(primaryIndex,doctorID);// Remove from primary index
         cout << "Doctor record deleted successfully.\n";
 
         p.savePrimaryIndexToFile(primaryIndex, "PrimaryIndexOnDocID.txt");
+        r1.saveAvailListToFile(doctorAvailList, "DoctorAvailList.txt");
     }
     void printDoctorInfo(const string& doctorID) {
-        // Check if the Doctor ID exists in the primary index
         if (primaryIndex.find(doctorID) == primaryIndex.end()) {
             cout << "Doctor ID not found.\n";
             return;
         }
         useprimaryIndex p ;
         int offset = p.binarySearchPrimaryIndex(primaryIndex,doctorID);
-        // Open the file to read the doctor information
         fstream file("Doctor.txt", ios::in);
         if (!file) {
             cerr << "Error opening file to read doctor information.\n";
             return;
         }
-        // Read the record using readRecord function
-        Record record = readRecord(file, offset);
+        Record record = record.readRecord(file, offset);
         file.close();
         cout << "Doctor Information:\n";
         cout << "Doctor ID: " << record.s1 << "\n";
@@ -173,11 +201,13 @@ struct Appointment {
         }
         useprimaryIndex p ;
         int offset = p.binarySearchPrimaryIndex(primaryIndexOnAppoint,AppID);
-        deleteRecord(file, offset, appointmentAvailList);
-        p.removePrimaryIndex(primaryIndexOnAppoint,AppID);// Remove from primary index
+        Record r2;
+        r2.deleteRecord(file, offset, appointmentAvailList);
+        p.removePrimaryIndex(primaryIndexOnAppoint,AppID);
         cout << "Appointment record deleted successfully.\n";
 
         p.savePrimaryIndexToFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
+        r2.saveAvailListToFile(doctorAvailList, "DoctorAvailList.txt");
     }
     void printAppointmentInfo(const string& AppID) {
         if (primaryIndexOnAppoint.find(AppID) == primaryIndexOnAppoint.end()) {
@@ -191,8 +221,7 @@ struct Appointment {
             cerr << "Error opening file to read Appointment information.\n";
             return;
         }
-        // Read the record using readRecord function
-        Record record = readRecord(file, offset);
+        Record record = record.readRecord(file, offset);
         file.close();
         cout << "Appointment Information:\n";
         cout << "Appointment ID: " << record.s1 << "\n";
@@ -200,21 +229,14 @@ struct Appointment {
         cout << "Doctor ID: " << record.s3 << "\n";
     }
 };
-// void printAvailList(const vector<int>& availList) {
-//     if (availList.empty()) {
-//         cout << "Empty\n";
-//         return;
-//     }
-//     for (int offset : availList) {
-//         cout << offset << " ";
-//     }
-//     cout << endl;
-// }
 
 int main() {
     useprimaryIndex p;
+    Record r1;
     p.loadPrimaryIndexFromFile(primaryIndex, "PrimaryIndexOnDocID.txt");
     p.loadPrimaryIndexFromFile(primaryIndexOnAppoint, "PrimaryIndexOnAppID.txt");
+    r1.loadAvailListFromFile(doctorAvailList, "doctorAvailList.txt");
+    r1.loadAvailListFromFile(appointmentAvailList,"appointmentAvailList.txt");
     while (true) {
         cout << "\nWelcome! to Healthcare management system\n";
         cout << "1. Add New Doctor\n";
@@ -262,7 +284,6 @@ int main() {
             Doctor doc;
             doc.deleteDoctor(doctorID);
         }
-        //printAvailList(doctorAvailList ); to debug the current content of availList
         if (choice == 7) {
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
             string doctorID;
@@ -282,5 +303,3 @@ int main() {
         }
     }
 }
-
-
