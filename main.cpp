@@ -396,6 +396,70 @@ struct Doctor {
         cout << "Doctor Name: " << record.s2 << "\n";
         cout << "Address: " << record.s3 << "\n";
     }
+void updateDoctorName(const string& doctorID, const string& newDoctorName) {
+    if (primaryIndex.find(doctorID) == primaryIndex.end()) {
+        cout << "Doctor ID not found. Update failed.\n";
+        return;
+    }
+
+    if (newDoctorName.length() > 30) {
+        cout << "Error: Doctor name cannot exceed 30 characters.\n";
+        return;
+    }
+
+    fstream file("Doctor.txt", ios::in | ios::out);
+    if (!file) {
+        cerr << "Error opening file to update doctor information.\n";
+        return;
+    }
+
+    useprimaryIndex p;
+    int offset = p.binarySearchPrimaryIndex(primaryIndex, doctorID);
+    Record record;
+    Record currentRecord = record.readRecord(file, offset);
+    string oldDoctorName = currentRecord.s2;
+
+    if (newDoctorName.length() <= oldDoctorName.length()) {
+        // Pad with spaces if the new name is shorter or equal in length best fit strategy
+        string paddedName = newDoctorName;
+        paddedName.append(oldDoctorName.length() - newDoctorName.length(), ' ');
+        currentRecord.s2 = paddedName;
+
+        // Save the updated record back to the file
+        string updatedRecord = currentRecord.s1 + "|" + currentRecord.s2 + "|" + currentRecord.s3 + "|";
+        file.seekp(offset, ios::beg);
+        file << updatedRecord.size() << updatedRecord;
+
+        cout << "Doctor name updated successfully from " << oldDoctorName << " to " << newDoctorName << ".\n";
+
+    } else {
+        // If the new name is longer than the old one, remove and re-add the record
+        file.close();
+        deleteDoctor(doctorID, oldDoctorName);
+
+        addDoctor(doctorID, newDoctorName, currentRecord.s3, primaryIndex);
+
+        cout << "Doctor name updated successfully by deleting and adding a new record.\n";
+    }
+
+    file.close();
+
+    // Update the secondary index
+    useSecondaryIndex secIdx;
+    secIdx.loadSecondaryIndexFromFile("SecondaryIndexOnDrName.txt");
+
+    // Remove the old name from the secondary index
+    if (!secIdx.removeSecondaryIndex(oldDoctorName, doctorID)) {
+        cout << "Old doctor name not found in secondary index.\n";
+    }
+
+    // Add the new name to the secondary index
+    secIdx.addSecondaryIndex(newDoctorName, doctorID);
+
+    // Save the updated secondary index
+    secIdx.saveSecondaryIndexToFile("SecondaryIndexOnDrName.txt");
+}
+
 };
 struct Appointment {
     char appointmentID[15];
@@ -478,6 +542,17 @@ int main() {
             cin.ignore();  // Clear the newline character left in the buffer
             cin.getline(doc.address, size(doc.address));
             doc.addDoctor(doc.doctorID, doc.doctorName, doc.address, primaryIndex);
+        }
+        if (choice == 3) {
+            cin.ignore(numeric_limits<streamsize>::max(), '\n'); // Clear input buffer
+            Doctor doc;
+            string doctorID,doctorName;
+            cout << "Enter the Doctor ID you want to update: ";
+            cin >> doctorID;
+            cout << "Enter the New Doctor Name:  ";
+            cin.ignore(); // To clear any leftover newline in the buffer
+            getline(cin, doctorName);
+            doc.updateDoctorName(doctorID,doctorName);
         }
         if (choice == 5) {
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
