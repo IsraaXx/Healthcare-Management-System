@@ -1,10 +1,1 @@
-Secondary Index:
-Amany Mohamed -> 0
-Mohamed Adel -> 3
-Sara Ali -> 1
 
-Inverted List:
-0: (d001, -1)
-1: (d002, -1)
-2: (#, #)
-3: (d004, -1)
