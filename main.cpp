@@ -838,8 +838,8 @@ void processQuery() {
     string condition = query.substr(conditionStart);
 
     // Process the table
-    if (table == "doctor") {
-        if (condition.find("DoctorID=") != string::npos) {
+    if (table == "doctors") {
+        if (condition.find("DoctorID=") != string::npos|| condition.find("Doctor ID=") != string::npos) {
             size_t pos = condition.find("=");
             if (pos != string::npos) {
                 string doctorID = condition.substr(pos + 2, condition.length() - pos - 3); // Skip quotes
@@ -851,7 +851,7 @@ void processQuery() {
                     cout << "Doctor Information:\n";
                     // Loop through fields and print requested information
                     for (const string& field : fields) {
-                        if(field=="*"){
+                        if(field=="*" || field=="all" ){
 
                             cout << "Doctor ID: " << record.s1 << "\n";
                             cout << "Doctor Name: " << record.s2 << "\n";
@@ -875,8 +875,8 @@ void processQuery() {
             cout << "Unsupported condition for table 'doctor'.\n";
         }
     }
-    else if (table == "appointment") {
-        if (condition.find("DoctorID=") != string::npos) {
+    else if (table == "appointments") {
+        if (condition.find("DoctorID=") != string::npos || condition.find("Doctor ID=") != string::npos) {
             size_t pos = condition.find("=");
             if (pos != string::npos) {
                 string doctorID = condition.substr(pos + 2, condition.length() - pos - 3); // Remove quotes
@@ -905,7 +905,7 @@ void processQuery() {
                         int offset = primaryIndexOnAppoint[appID];
                         Record record = r1.readRecord(file, offset);
                         for (const string& field : fields) {
-                            if(field=="*"){
+                            if(field=="*" || field=="all" ){
                                 cout << "Appointment Information:\n";
                                 cout << "Appointment ID: " << record.s1 << "\n";
                                 cout << "Appointment Date: " << record.s2 << "\n";
