@@ -1,8 +1,0 @@
-Secondary Index:
-d001 -> -1
-
-Inverted List:
-0: (#, #)
-1: (#, #)
-2: (#, #)
-3: (#, #)
